@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGameContext } from '../context/GameContext';
 import { symbols } from '../utils/symbols';
-import { X, Save, Coins, BarChart, Wand2, Zap } from 'lucide-react';
+import { X, Save, Coins, BarChart, Wand2, Zap, Download, Upload } from 'lucide-react';
 
 interface SettingsProps {
   onClose: () => void;
@@ -17,6 +17,9 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   const [selectedTab, setSelectedTab] = useState<'money' | 'stats' | 'cheats'>('money');
   const [creditInput, setCreditInput] = useState(state.credits.toString());
   const [selectedSymbols, setSelectedSymbols] = useState<Array<GameSymbol | null>>([null, null, null]);
+  const [saveFileName, setSaveFileName] = useState('archiiv-save');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync selectedSymbols with game state's forceSymbols
   useEffect(() => {
@@ -66,9 +69,73 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     }
   };
 
+  const handleDownloadSave = () => {
+    const saveData = {
+      credits: state.credits,
+      bet: state.bet,
+      totalBet: state.totalBet,
+      stats: state.stats,
+      cheats: state.cheats,
+      autoSpin: state.autoSpin
+    };
+
+    const blob = new Blob([JSON.stringify(saveData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${saveFileName}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      handleLoadSave(file);
+    }
+  };
+
+  const handleLoadSave = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const saveData = JSON.parse(e.target?.result as string);
+        
+        // Validate save data structure
+        if (typeof saveData.credits === 'number') {
+          dispatch({ type: 'SET_CREDITS', payload: saveData.credits });
+        }
+        if (typeof saveData.bet === 'number') {
+          dispatch({ type: 'SET_BET', payload: saveData.bet });
+        }
+        if (saveData.stats) {
+          dispatch({ type: 'UPDATE_STATS', payload: { win: 0 } });
+        }
+        if (saveData.cheats) {
+          Object.entries(saveData.cheats).forEach(([key, value]) => {
+            dispatch({ 
+              type: 'SET_CHEAT', 
+              payload: { key: key as keyof typeof state.cheats, value } 
+            });
+          });
+        }
+        if (typeof saveData.autoSpin === 'boolean' && saveData.autoSpin) {
+          dispatch({ type: 'TOGGLE_AUTO_SPIN' });
+        }
+      } catch (error) {
+        console.error('Error loading save file:', error);
+        alert('Invalid save file format');
+      }
+    };
+    reader.readAsText(file);
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-xl shadow-2xl w-full max-w-lg border border-gray-700">
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-gray-900 rounded-xl shadow-2xl w-full max-w-lg border border-gray-700 my-4">
         {/* Header */}
         <div className="flex justify-between items-center bg-gray-800 rounded-t-xl p-4">
           <h2 className="text-xl font-bold text-white">Settings</h2>
@@ -88,8 +155,8 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
               selectedTab === 'money' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800'
             }`}
           >
-            <Coins className="w-5 h-5" />
-            Money
+            <Save className="w-5 h-5" />
+            Save
           </button>
           <button 
             onClick={() => setSelectedTab('stats')}
@@ -112,67 +179,59 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
         </div>
         
         {/* Content */}
-        <div className="p-6">
-          {/* Money Settings */}
+        <div className="p-4 sm:p-6">
+          {/* Save/Load Settings */}
           {selectedTab === 'money' && (
-            <div>
-              <div className="mb-4">
-                <label className="block text-gray-400 font-medium mb-2">Credits</label>
-                <div className="flex gap-2">
+            <div className="space-y-6">
+              <div className="bg-gray-800 p-4 rounded-lg">
+                <h3 className="text-white font-medium mb-4 flex items-center gap-2">
+                  <Download className="w-5 h-5" />
+                  Download Save File
+                </h3>
+                <div className="flex flex-col sm:flex-row gap-2">
                   <input
-                    type="number"
-                    value={creditInput}
-                    onChange={e => setCreditInput(e.target.value)}
-                    className="w-full bg-gray-800 text-white border border-gray-700 rounded-lg px-3 py-2"
-                    min="0"
+                    type="text"
+                    value={saveFileName}
+                    onChange={(e) => setSaveFileName(e.target.value)}
+                    className="flex-1 bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2"
+                    placeholder="Save file name"
                   />
                   <button
-                    onClick={handleUpdateCredits}
-                    className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center gap-1"
+                    onClick={handleDownloadSave}
+                    className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2"
                   >
-                    <Save className="w-4 h-4" />
-                    Set
+                    <Download className="w-4 h-4" />
+                    Download
                   </button>
                 </div>
               </div>
-              
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => {
-                    setCreditInput('1000');
-                    dispatch({ type: 'SET_CREDITS', payload: 1000 });
-                  }}
-                  className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded-lg"
-                >
-                  Add 1,000
-                </button>
-                <button
-                  onClick={() => {
-                    setCreditInput('10000');
-                    dispatch({ type: 'SET_CREDITS', payload: 10000 });
-                  }}
-                  className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded-lg"
-                >
-                  Add 10,000
-                </button>
-                <button
-                  onClick={() => {
-                    setCreditInput('100000');
-                    dispatch({ type: 'SET_CREDITS', payload: 100000 });
-                  }}
-                  className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded-lg"
-                >
-                  Add 100,000
-                </button>
-                <button
-                  onClick={() => {
-                    setCreditInput('1000000');
-                    dispatch({ type: 'SET_CREDITS', payload: 1000000 });
-                  }}
-                  className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded-lg"
-                >
-                  MILLIONAIRE
-                </button>
+
+              <div className="bg-gray-800 p-4 rounded-lg">
+                <h3 className="text-white font-medium mb-4 flex items-center gap-2">
+                  <Upload className="w-5 h-5" />
+                  Load Save File
+                </h3>
+                <div className="flex flex-col gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".json"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Choose File
+                  </button>
+                  {selectedFile && (
+                    <div className="text-gray-400 text-sm truncate">
+                      Selected: {selectedFile.name}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -180,7 +239,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
           {/* Stats */}
           {selectedTab === 'stats' && (
             <div className="text-white">
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 <div className="bg-gray-800 p-3 rounded-lg text-center">
                   <p className="text-gray-400 font-medium">Total Spins</p>
                   <p className="text-3xl font-bold">{state.stats.totalSpins}</p>
@@ -189,7 +248,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                   <p className="text-gray-400 font-medium">Total Wins</p>
                   <p className="text-3xl font-bold">{state.stats.totalWins}</p>
                 </div>
-                <div className="bg-gray-800 p-3 rounded-lg text-center">
+                <div className="bg-gray-800 p-3 rounded-lg text-center col-span-2 sm:col-span-1">
                   <p className="text-gray-400 font-medium">Win Rate</p>
                   <p className="text-3xl font-bold">
                     {state.stats.totalSpins 
@@ -206,12 +265,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
               
               <button
                 onClick={() => {
-                  dispatch({ 
-                    type: 'UPDATE_STATS', 
-                    payload: { 
-                      win: 0
-                    }
-                  });
+                  dispatch({ type: 'RESET_STATS' });
                 }}
                 className="mt-4 w-full bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded-lg"
               >
@@ -223,6 +277,65 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
           {/* Cheats */}
           {selectedTab === 'cheats' && (
             <div className="text-white space-y-6">
+              <div className="bg-gray-800 p-4 rounded-lg">
+                <h3 className="font-medium mb-4 flex items-center gap-2">
+                  <Coins className="w-5 h-5" />
+                  Money Settings
+                </h3>
+                <div className="mb-4">
+                  <label className="block text-gray-400 font-medium mb-2">Credits</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={creditInput}
+                      onChange={e => setCreditInput(e.target.value)}
+                      onBlur={handleUpdateCredits}
+                      className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      min="0"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {
+                      setCreditInput('1000');
+                      dispatch({ type: 'SET_CREDITS', payload: 1000 });
+                    }}
+                    className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg"
+                  >
+                    Set 1000
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCreditInput('10000');
+                      dispatch({ type: 'SET_CREDITS', payload: 10000 });
+                    }}
+                    className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg"
+                  >
+                    Set 10000
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCreditInput('100000');
+                      dispatch({ type: 'SET_CREDITS', payload: 100000 });
+                    }}
+                    className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg"
+                  >
+                    Set 100000
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCreditInput('1000000');
+                      dispatch({ type: 'SET_CREDITS', payload: 1000000 });
+                    }}
+                    className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg"
+                  >
+                    Set 1000000
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <label className="flex justify-between mb-1">
                   <span>Win Rate: {Math.round(state.cheats.winRate * 100)}%</span>
@@ -293,7 +406,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                       : 'bg-gray-800 hover:bg-gray-700'
                   }`}
                 >
-                  {state.cheats.alwaysJackpot ? '✓ JACKPOT MODE ON' : 'JACKPOT MODE OFF'}
+                  {state.cheats.alwaysJackpot ? 'jackpot mode' : 'jackpot mode'}
                 </button>
               </div>
             </div>

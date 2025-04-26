@@ -13,23 +13,16 @@ const SlotMachine: React.FC = () => {
   const [spinButtonDisabled, setSpinButtonDisabled] = useState(false);
   const [winAnimationActive, setWinAnimationActive] = useState(false);
   const autoSpinTimeoutRef = useRef<number>();
-
-  // Sound effects
-  const [spinSound] = useState(new Audio('./sounds/spin.mp3'));
-  const [winSound] = useState(new Audio('./sounds/win.mp3'));
-  const [buttonSound] = useState(new Audio('./sounds/button.mp3'));
+  const [reels, setReels] = useState(state.reels);
+  const [isSpinning, setIsSpinning] = useState(false);
 
   // Handle spin action
-  const handleSpin = () => {
-    if (state.credits < state.totalBet || state.spinning) return;
+  const handleSpin = async () => {
+    if (state.credits < state.totalBet || isSpinning) return;
     
-    try {
-      spinSound.currentTime = 0;
-      spinSound.play().catch(() => {});
-    } catch (e) {}
-
-    setWinAnimationActive(false);
     dispatch({ type: 'SPIN' });
+    setIsSpinning(true);
+    setWinAnimationActive(false);
     setSpinButtonDisabled(true);
     
     setTimeout(() => {
@@ -40,6 +33,7 @@ const SlotMachine: React.FC = () => {
         state.cheats.alwaysJackpot
       );
       
+      setReels(newReels);
       dispatch({ type: 'SET_REELS', payload: newReels });
       
       const { winningLines, totalWin } = getWinningPaylines(
@@ -52,20 +46,16 @@ const SlotMachine: React.FC = () => {
       dispatch({ type: 'SET_ACTIVE_PAYLINES', payload: winningLines });
       
       if (totalWin > 0) {
+        setWinAnimationActive(true);
         dispatch({ type: 'SET_LAST_WIN', payload: totalWin });
         dispatch({ type: 'SET_CREDITS', payload: state.credits + totalWin });
-        setWinAnimationActive(true);
-        
-        try {
-          winSound.currentTime = 0;
-          winSound.play().catch(() => {});
-        } catch (e) {}
+        dispatch({ type: 'UPDATE_STATS', payload: { win: totalWin } });
       } else {
         dispatch({ type: 'SET_LAST_WIN', payload: 0 });
       }
       
-      dispatch({ type: 'UPDATE_STATS', payload: { win: totalWin } });
       setSpinButtonDisabled(false);
+      setIsSpinning(false);
       
       if (state.autoSpin && state.credits >= state.totalBet) {
         autoSpinTimeoutRef.current = window.setTimeout(handleSpin, 1500);
@@ -74,33 +64,15 @@ const SlotMachine: React.FC = () => {
   };
 
   const toggleAutoSpin = () => {
-    try {
-      buttonSound.currentTime = 0;
-      buttonSound.play().catch(() => {});
-    } catch (e) {}
-    
-    // Clear any pending auto-spin timeout when toggling off
-    if (state.autoSpin) {
-      if (autoSpinTimeoutRef.current) {
-        window.clearTimeout(autoSpinTimeoutRef.current);
-        autoSpinTimeoutRef.current = undefined;
-      }
-    }
-    
     dispatch({ type: 'TOGGLE_AUTO_SPIN' });
     
     // Only start spinning if turning auto-spin on
-    if (!state.autoSpin && !state.spinning && state.credits >= state.totalBet) {
+    if (!state.autoSpin && !isSpinning && state.credits >= state.totalBet) {
       handleSpin();
     }
   };
 
   const toggleSettings = () => {
-    try {
-      buttonSound.currentTime = 0;
-      buttonSound.play().catch(() => {});
-    } catch (e) {}
-    
     setShowSettings(!showSettings);
   };
 
@@ -111,19 +83,12 @@ const SlotMachine: React.FC = () => {
   };
 
   useEffect(() => {
-    spinSound.volume = 0.3;
-    winSound.volume = 0.5;
-    buttonSound.volume = 0.2;
-    
     return () => {
-      spinSound.pause();
-      winSound.pause();
-      buttonSound.pause();
       if (autoSpinTimeoutRef.current) {
         window.clearTimeout(autoSpinTimeoutRef.current);
       }
     };
-  }, [spinSound, winSound, buttonSound]);
+  }, []);
 
   return (
     <div className="relative flex flex-col items-center justify-center min-h-screen p-2 sm:p-4">
@@ -164,8 +129,8 @@ const SlotMachine: React.FC = () => {
         </div>
 
         <ReelDisplay 
-          reels={state.reels} 
-          spinning={state.spinning} 
+          reels={reels} 
+          spinning={isSpinning} 
           paylines={state.paylines}
           activePaylines={state.activePaylines}
         />
@@ -177,7 +142,7 @@ const SlotMachine: React.FC = () => {
           bet={state.bet}
           totalBet={state.totalBet}
           autoSpin={state.autoSpin}
-          spinning={state.spinning}
+          spinning={isSpinning}
           disabled={state.credits < state.totalBet || spinButtonDisabled}
         />
       </div>
