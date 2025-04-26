@@ -3,7 +3,7 @@
 <br />
 <div align="center">
   <a href="https://slots.archiiv.org">
-    <img src="https://d2w9rnfcy7mm78.cloudfront.net/36261708/original_b1cc3c7a4ef53736fad50b876dbaebd4.png?1745635623?bc=0" alt="Logo" width="80" height="80">
+    <img src="https://d2w9rnfcy7mm78.cloudfront.net/36261876/original_cbf7db1205788359deb0f0fc331cf9da.png?1745637610?bc=0" alt="Logo" width="80" height="80">
   </a>
   <h3 align="center">slots.archiiv.org</h3>
 
