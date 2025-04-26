@@ -25,8 +25,6 @@ I was surfing the internet the other day and realized a lot of free to play slot
 </br></br>
 TO DO:</br></br>
 
-- local storage saving
-- saving and loading from downloaded files
 - add a main menu
 - add a disclaimer
 - add a light mode
