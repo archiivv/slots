@@ -10,7 +10,8 @@
   <p align="center">
     A free-to-play slot machine built in React and Tailwind. 
   <br />
-    <a href="https://slots.archiiv.org/"><strong>Visit The Website »</strong></a>
+    <a href="https://slots.archiiv.org/"><strong>Visit The Website »</strong></a></br>
+    <a href="https://slots.arch.open-sky.org/"><strong>Visit The Mirror »</strong></a>
   </p>
 
   <br /><br /><br /><br /><br />
