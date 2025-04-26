@@ -1,0 +1,50 @@
+/* Custom animations for slot machine */
+
+@keyframes spinReel {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-100%); }
+}
+
+@keyframes floatOut {
+  0% { 
+    transform: translate(0, 0) scale(1); 
+    opacity: 1; 
+  }
+  50% {
+    transform: translate(var(--tw-translate-x, 0), var(--tw-translate-y, -50px)) scale(1.2);
+    opacity: 0.5;
+  }
+  100% { 
+    transform: translate(var(--tw-translate-x, 0), var(--tw-translate-y, -100px)) scale(0.8); 
+    opacity: 0; 
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+.animate-spin-1 {
+  animation: spinReel 0.6s linear infinite;
+}
+
+.animate-spin-2 {
+  animation: spinReel 0.6s linear infinite;
+  animation-delay: 0.1s;
+}
+
+.animate-spin-3 {
+  animation: spinReel 0.6s linear infinite;
+  animation-delay: 0.2s;
+}
+
+.animate-float-out {
+  animation: floatOut 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  --tw-translate-x: random(-30px, 30px);
+  --tw-translate-y: random(-100px, -50px);
+}
+
+.animate-win-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
