@@ -26,6 +26,9 @@ TO DO:</br></br>
 
 - local storage saving
 - saving and loading from downloaded files
+- add a main menu
+- add a disclaimer
+- add a light mode
 - (possible) force all emojis into apple emojis
 - (possible) add aws bucket support for cloud integration
 
