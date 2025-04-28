@@ -27,8 +27,6 @@ TO DO:</br></br>
 
 - add a main menu
 - add a disclaimer
-- add a light mode
 - (possible) force all emojis into apple emojis
-- (possible) add aws bucket support for cloud integration
 
 </div>
