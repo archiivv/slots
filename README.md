@@ -18,7 +18,7 @@
   <!-- ABOUT THE PROJECT -->
 <h3 align="center">about the website</h3>
 
-![](https://d2w9rnfcy7mm78.cloudfront.net/36261746/original_f6d0493ddaca40478570d2a65a88dacf.png?1745636055?bc=0)
+![](https://d2w9rnfcy7mm78.cloudfront.net/36318909/original_15daf48384f5b11ddd4b5166ef7d0b0b.png?1745883217?bc=0)
 
 </br>
 I was surfing the internet the other day and realized a lot of free to play slot machines were very ugly looking. I decided I'd change that, and this is my best attempts at doing so. It also has a lot of fun cheats!
