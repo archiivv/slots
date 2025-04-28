@@ -20,6 +20,45 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   const [saveFileName, setSaveFileName] = useState('archiiv-save');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // Prevent scrolling on main page while modal is open
+  useEffect(() => {
+    const body = document.body;
+    const html = document.documentElement;
+    
+    // Store the current scroll position
+    const scrollY = window.scrollY;
+    
+    // Prevent scrolling
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollY}px`;
+    body.style.width = '100%';
+    body.style.overflow = 'hidden';
+    
+    return () => {
+      // Restore scrolling
+      body.style.position = '';
+      body.style.top = '';
+      body.style.width = '';
+      body.style.overflow = '';
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+
+  // Handle click outside to close
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [onClose]);
 
   // Sync selectedSymbols with game state's forceSymbols
   useEffect(() => {
@@ -134,8 +173,12 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-gray-900 rounded-xl shadow-2xl w-full max-w-lg border border-gray-700 my-4">
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+      <div 
+        ref={modalRef}
+        className="bg-gray-900 rounded-xl shadow-2xl w-full max-w-lg border border-gray-700"
+        style={{ height: '80vh' }}
+      >
         {/* Header */}
         <div className="flex justify-between items-center bg-gray-800 rounded-t-xl p-4">
           <h2 className="text-xl font-bold text-white">Settings</h2>
@@ -179,7 +222,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
         </div>
         
         {/* Content */}
-        <div className="p-4 sm:p-6">
+        <div className="p-4 sm:p-6 overflow-y-auto" style={{ height: 'calc(80vh - 120px)' }}>
           {/* Save/Load Settings */}
           {selectedTab === 'money' && (
             <div className="space-y-6">

@@ -10,7 +10,7 @@ import './utils/animations.css';
 function App() {
   return (
     <GameProvider>
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen w-full max-w-screen overflow-x-hidden bg-gray-50 dark:bg-gray-900">
         <div className="flex-1 pb-20">
           <SlotMachine />
         </div>

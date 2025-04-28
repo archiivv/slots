@@ -47,15 +47,15 @@ const WinDisplay: React.FC<WinDisplayProps> = ({ win, active }) => {
   };
 
   return (
-    <div className={`relative bg-gray-900 rounded-lg p-3 flex-1 text-center overflow-hidden ${
+    <div className={`relative bg-gray-50 dark:bg-gray-900 rounded-lg p-3 flex-1 text-center overflow-hidden shadow-sm ${
       active && win > 0 ? 'animate-win-pulse' : ''
     }`}>
-      <div className="text-sm text-gray-400 font-medium">
+      <div className="text-sm text-gray-500 dark:text-gray-400 font-medium">
         {active && win > 0 ? getWinMessage() : 'last win'}
       </div>
       
       <div 
-        className={`text-2xl ${getWinSizeClass()} font-bold transition-all duration-300`}
+        className={`text-2xl text-gray-800 dark:text-white font-bold transition-all duration-300`}
         style={{ transform: `scale(${scale})` }}
       >
         {win}
@@ -64,7 +64,7 @@ const WinDisplay: React.FC<WinDisplayProps> = ({ win, active }) => {
       {particles.map(particle => (
         <div
           key={particle.id}
-          className="absolute rounded-full animate-float-out bg-white"
+          className="absolute rounded-full animate-float-out bg-gray-800 dark:bg-white"
           style={{
             left: `${particle.x}%`,
             top: `${particle.y}%`,
