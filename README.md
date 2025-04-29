@@ -8,7 +8,7 @@
   <h3 align="center">slots.archiiv.org</h3>
 
   <p align="center">
-    A free-to-play slot machine built in React and Tailwind. 
+    A free-to-play slot machine built in React and TypeScript. 
   <br />
     <a href="https://slots.archiiv.org/"><strong>Visit The Website »</strong></a></br>
     <a href="https://slots.arch.open-sky.org/"><strong>Visit The Mirror »</strong></a>
