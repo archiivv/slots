@@ -23,10 +23,5 @@
 </br>
 I was surfing the internet the other day and realized a lot of free to play slot machines were very ugly looking. I decided I'd change that, and this is my best attempts at doing so. It also has a lot of fun cheats!
 </br></br>
-TO DO:</br></br>
-
-- add a main menu
-- add a disclaimer
-- (possible) force all emojis into apple emojis
 
 </div>
