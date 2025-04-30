@@ -104,8 +104,14 @@ const SlotMachine: React.FC = () => {
   const toggleAutoSpin = () => {
     dispatch({ type: 'TOGGLE_AUTO_SPIN' });
     
-    // Only start spinning if turning auto-spin on
-    if (!state.autoSpin && !isSpinning && state.credits >= state.totalBet) {
+    // Clear existing timeout if turning auto-spin off
+    if (state.autoSpin) {
+      if (autoSpinTimeoutRef.current) {
+        window.clearTimeout(autoSpinTimeoutRef.current);
+        autoSpinTimeoutRef.current = undefined;
+      }
+    } else if (!isSpinning && state.credits >= state.totalBet) {
+      // Only start spinning if turning auto-spin on
       handleSpin();
     }
   };
