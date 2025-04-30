@@ -17,7 +17,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   const [selectedTab, setSelectedTab] = useState<'money' | 'stats' | 'cheats'>('money');
   const [creditInput, setCreditInput] = useState(state.credits.toString());
   const [selectedSymbols, setSelectedSymbols] = useState<Array<GameSymbol | null>>([null, null, null]);
-  const [saveFileName, setSaveFileName] = useState('archiiv-save');
+  const [saveFileName, setSaveFileName] = useState('slot-machine');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -82,17 +82,13 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
 
   const handleWinRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseFloat(e.target.value);
-    dispatch({ 
-      type: 'SET_CHEAT', 
-      payload: { key: 'winRate', value: value / 100 } 
-    });
+    if (!isNaN(value) && value >= 0 && value <= 100) {
+      dispatch({ type: 'SET_CHEAT_WIN_RATE', payload: value / 100 });
+    }
   };
 
-  const handleJackpotToggle = () => {
-    dispatch({ 
-      type: 'SET_CHEAT', 
-      payload: { key: 'alwaysJackpot', value: !state.cheats.alwaysJackpot } 
-    });
+  const handleAlwaysJackpotChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    dispatch({ type: 'SET_CHEAT_ALWAYS_JACKPOT', payload: e.target.checked });
   };
 
   const handleSelectSymbol = (index: number, symbol: GameSymbol | null) => {
@@ -122,7 +118,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${saveFileName}.json`;
+    a.download = `${saveFileName}.save`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -142,34 +138,36 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     reader.onload = (e) => {
       try {
         const saveData = JSON.parse(e.target?.result as string);
+        console.log('Loading save file:', saveData);
         
-        // Validate save data structure
-        if (typeof saveData.credits === 'number') {
-          dispatch({ type: 'SET_CREDITS', payload: saveData.credits });
-        }
-        if (typeof saveData.bet === 'number') {
-          dispatch({ type: 'SET_BET', payload: saveData.bet });
-        }
-        if (saveData.stats) {
-          dispatch({ type: 'UPDATE_STATS', payload: { win: 0 } });
-        }
-        if (saveData.cheats) {
-          Object.entries(saveData.cheats).forEach(([key, value]) => {
-            dispatch({ 
-              type: 'SET_CHEAT', 
-              payload: { key: key as keyof typeof state.cheats, value } 
-            });
-          });
-        }
-        if (typeof saveData.autoSpin === 'boolean' && saveData.autoSpin) {
-          dispatch({ type: 'TOGGLE_AUTO_SPIN' });
-        }
+        // Load all state at once
+        dispatch({ 
+          type: 'LOAD_STATE', 
+          payload: {
+            credits: saveData.credits,
+            bet: saveData.bet,
+            totalBet: saveData.totalBet,
+            stats: saveData.stats,
+            cheats: saveData.cheats,
+            settings: saveData.settings,
+            autoSpin: saveData.autoSpin || false,
+            reels: state.reels,
+            spinning: false,
+            lastWin: 0,
+            paylines: state.paylines,
+            activePaylines: [],
+          }
+        });
       } catch (error) {
         console.error('Error loading save file:', error);
         alert('Invalid save file format');
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleCheatToggle = () => {
+    dispatch({ type: 'TOGGLE_CHEATS' });
   };
 
   return (
@@ -258,7 +256,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".json"
+                    accept=".save"
                     onChange={handleFileSelect}
                     className="hidden"
                   />
@@ -305,6 +303,11 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                 <p className="text-gray-400 font-medium">Biggest Win</p>
                 <p className="text-4xl font-bold">{state.stats.biggestWin}</p>
               </div>
+
+              <div className="mt-4 bg-gray-800 p-3 rounded-lg text-center">
+                <p className="text-gray-400 font-medium">Has Cheated</p>
+                <p className="text-lg font-bold">{state.stats.hasCheated ? 'Yes' : 'No'}</p>
+              </div>
               
               <button
                 onClick={() => {
@@ -321,137 +324,159 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
           {selectedTab === 'cheats' && (
             <div className="text-white space-y-6">
               <div className="bg-gray-800 p-4 rounded-lg">
-                <h3 className="font-medium mb-4 flex items-center gap-2">
-                  <Coins className="w-5 h-5" />
-                  Money Settings
-                </h3>
-                <div className="mb-4">
-                  <label className="block text-gray-400 font-medium mb-2">Credits</label>
-                  <div className="flex gap-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-medium flex items-center gap-2">
+                    <Wand2 className="w-5 h-5" />
+                    Cheat Mode
+                  </h3>
+                  <label className="relative inline-flex items-center cursor-pointer">
                     <input
-                      type="number"
-                      value={creditInput}
-                      onChange={e => setCreditInput(e.target.value)}
-                      onBlur={handleUpdateCredits}
-                      className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      min="0"
+                      type="checkbox"
+                      checked={state.cheats.enabled}
+                      onChange={handleCheatToggle}
+                      className="sr-only peer"
                     />
-                  </div>
+                    <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
                 </div>
-                
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => {
-                      setCreditInput('1000');
-                      dispatch({ type: 'SET_CREDITS', payload: 1000 });
-                    }}
-                    className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg"
-                  >
-                    Set 1000
-                  </button>
-                  <button
-                    onClick={() => {
-                      setCreditInput('10000');
-                      dispatch({ type: 'SET_CREDITS', payload: 10000 });
-                    }}
-                    className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg"
-                  >
-                    Set 10000
-                  </button>
-                  <button
-                    onClick={() => {
-                      setCreditInput('100000');
-                      dispatch({ type: 'SET_CREDITS', payload: 100000 });
-                    }}
-                    className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg"
-                  >
-                    Set 100000
-                  </button>
-                  <button
-                    onClick={() => {
-                      setCreditInput('1000000');
-                      dispatch({ type: 'SET_CREDITS', payload: 1000000 });
-                    }}
-                    className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg"
-                  >
-                    Set 1000000
-                  </button>
-                </div>
+
+                {state.cheats.enabled && (
+                  <>
+                    <div className="mt-4">
+                      <label className="block text-gray-400 font-medium mb-2">Credits</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          value={creditInput}
+                          onChange={e => setCreditInput(e.target.value)}
+                          onBlur={handleUpdateCredits}
+                          className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          min="0"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2 mt-4">
+                      <button
+                        onClick={() => {
+                          setCreditInput('1000');
+                          dispatch({ type: 'SET_CREDITS', payload: 1000 });
+                        }}
+                        className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg"
+                      >
+                        Set 1000
+                      </button>
+                      <button
+                        onClick={() => {
+                          setCreditInput('10000');
+                          dispatch({ type: 'SET_CREDITS', payload: 10000 });
+                        }}
+                        className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg"
+                      >
+                        Set 10000
+                      </button>
+                      <button
+                        onClick={() => {
+                          setCreditInput('100000');
+                          dispatch({ type: 'SET_CREDITS', payload: 100000 });
+                        }}
+                        className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg"
+                      >
+                        Set 100000
+                      </button>
+                      <button
+                        onClick={() => {
+                          setCreditInput('1000000');
+                          dispatch({ type: 'SET_CREDITS', payload: 1000000 });
+                        }}
+                        className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg"
+                      >
+                        Set 1000000
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
 
-              <div>
-                <label className="flex justify-between mb-1">
-                  <span>Win Rate: {Math.round(state.cheats.winRate * 100)}%</span>
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={state.cheats.winRate * 100}
-                  onChange={handleWinRateChange}
-                  className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer"
-                />
-                <div className="flex justify-between text-xs text-gray-400 mt-1">
-                  <span>Normal</span>
-                  <span>Always Win</span>
-                </div>
-              </div>
-              
-              <div>
-                <h3 className="font-medium mb-2 flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-gray-400" />
-                  Force Middle Row Symbols
-                </h3>
-                <div className="grid grid-cols-3 gap-2 mb-2">
-                  {[0, 1, 2].map((index) => (
-                    <div 
-                      key={`selected-${index}`}
-                      className="h-16 flex items-center justify-center bg-gray-800 rounded-lg text-3xl"
-                    >
-                      {selectedSymbols[index] ? selectedSymbols[index]?.emoji : '?'}
+              {state.cheats.enabled && (
+                <>
+                  <div>
+                    <label className="flex justify-between mb-1">
+                      <span>Win Rate: {Math.round(state.cheats.winRate * 100)}%</span>
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={state.cheats.winRate * 100}
+                      onChange={handleWinRateChange}
+                      className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer"
+                    />
+                    <div className="flex justify-between text-xs text-gray-400 mt-1">
+                      <span>Normal</span>
+                      <span>Always Win</span>
                     </div>
-                  ))}
-                </div>
-                
-                <div className="grid grid-cols-5 gap-2">
-                  {symbols.map((symbol) => (
+                  </div>
+                  
+                  <div>
+                    <h3 className="font-medium mb-2 flex items-center gap-2">
+                      <Zap className="w-5 h-5 text-gray-400" />
+                      Force Middle Row Symbols
+                    </h3>
+                    <div className="grid grid-cols-3 gap-2 mb-2">
+                      {[0, 1, 2].map((index) => (
+                        <div 
+                          key={`selected-${index}`}
+                          className="h-16 flex items-center justify-center bg-gray-800 rounded-lg text-3xl"
+                        >
+                          {selectedSymbols[index] ? selectedSymbols[index]?.emoji : '?'}
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="grid grid-cols-5 gap-2">
+                      {symbols.map((symbol) => (
+                        <button
+                          key={symbol.name}
+                          onClick={() => {
+                            const firstEmpty = selectedSymbols.findIndex(s => s === null);
+                            if (firstEmpty !== -1) {
+                              handleSelectSymbol(firstEmpty, symbol);
+                            }
+                          }}
+                          className="flex flex-col items-center justify-center bg-gray-800 hover:bg-gray-700 rounded-lg p-2"
+                        >
+                          <span className="text-2xl">{symbol.emoji}</span>
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => {
+                          setSelectedSymbols([null, null, null]);
+                          dispatch({ type: 'SET_CHEAT', payload: { key: 'forceSymbols', value: null } });
+                        }}
+                        className="col-span-5 bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded-lg mt-2"
+                      >
+                        clear selection
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div>
                     <button
-                      key={symbol.name}
                       onClick={() => {
-                        const firstEmpty = selectedSymbols.findIndex(s => s === null);
-                        if (firstEmpty !== -1) {
-                          handleSelectSymbol(firstEmpty, symbol);
-                        }
+                        dispatch({ type: 'SET_CHEAT', payload: { key: 'alwaysJackpot', value: !state.cheats.alwaysJackpot } });
                       }}
-                      className="flex flex-col items-center justify-center bg-gray-800 hover:bg-gray-700 rounded-lg p-2"
+                      className={`w-full p-3 rounded-lg ${
+                        state.cheats.alwaysJackpot 
+                          ? 'bg-gray-700 hover:bg-gray-600' 
+                          : 'bg-gray-800 hover:bg-gray-700'
+                      }`}
                     >
-                      <span className="text-2xl">{symbol.emoji}</span>
+                      {state.cheats.alwaysJackpot ? 'jackpot mode' : 'jackpot mode'}
                     </button>
-                  ))}
-                  <button
-                    onClick={() => {
-                      setSelectedSymbols([null, null, null]);
-                      dispatch({ type: 'SET_CHEAT', payload: { key: 'forceSymbols', value: null } });
-                    }}
-                    className="col-span-5 bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded-lg mt-2"
-                  >
-                    Clear Selection
-                  </button>
-                </div>
-              </div>
-              
-              <div>
-                <button
-                  onClick={handleJackpotToggle}
-                  className={`w-full p-3 rounded-lg ${
-                    state.cheats.alwaysJackpot 
-                      ? 'bg-gray-700 hover:bg-gray-600' 
-                      : 'bg-gray-800 hover:bg-gray-700'
-                  }`}
-                >
-                  {state.cheats.alwaysJackpot ? 'jackpot mode' : 'jackpot mode'}
-                </button>
-              </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

@@ -15,13 +15,24 @@ export type GameState = {
   stats: {
     totalSpins: number;
     totalWins: number;
+    totalLosses: number;
     biggestWin: number;
+    totalWon: number;
+    totalLost: number;
+    hasCheated: boolean;
   };
   cheats: {
+    enabled: boolean;
     winRate: number;
-    alwaysJackpot: boolean;
     forceSymbols: Symbol[] | null;
+    alwaysJackpot: boolean;
   };
+  settings: {
+    soundEnabled: boolean;
+    musicEnabled: boolean;
+    vibrationEnabled: boolean;
+  };
+  currentWinRate: number;
 };
 
 type GameAction =
@@ -36,7 +47,11 @@ type GameAction =
   | { type: 'UPDATE_STATS'; payload: { win: number } }
   | { type: 'RESET_STATS' }
   | { type: 'SET_CHEAT'; payload: { key: keyof GameState['cheats']; value: any } }
-  | { type: 'LOAD_STATE'; payload: GameState };
+  | { type: 'LOAD_STATE'; payload: GameState }
+  | { type: 'TOGGLE_CHEATS' }
+  | { type: 'SET_CHEAT_WIN_RATE'; payload: number }
+  | { type: 'SET_CHEAT_FORCE_SYMBOLS'; payload: Symbol[] }
+  | { type: 'SET_CHEAT_ALWAYS_JACKPOT'; payload: boolean };
 
 // Create context
 const GameContext = createContext<{
@@ -68,13 +83,24 @@ const initialState: GameState = {
   stats: {
     totalSpins: 0,
     totalWins: 0,
+    totalLosses: 0,
     biggestWin: 0,
+    totalWon: 0,
+    totalLost: 0,
+    hasCheated: false,
   },
   cheats: {
+    enabled: false,
     winRate: 0.3, // Default 30% win rate
     forceSymbols: null,
     alwaysJackpot: false,
   },
+  settings: {
+    soundEnabled: true,
+    musicEnabled: true,
+    vibrationEnabled: true,
+  },
+  currentWinRate: 0.3, // Initialize with default win rate
 };
 
 // Create reducer
@@ -106,13 +132,28 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     case 'TOGGLE_AUTO_SPIN':
       return { ...state, autoSpin: !state.autoSpin };
     case 'UPDATE_STATS':
+      const newTotalSpins = state.stats.totalSpins + 1;
+      let newWinRate = state.currentWinRate;
+      
+      // Randomize win rate every 100 spins for non-cheaters
+      if (!state.cheats.enabled && newTotalSpins % 100 === 0) {
+        // Random win rate between 20% and 40%
+        newWinRate = 0.2 + Math.random() * 0.2;
+        console.log(`New win rate set to ${(newWinRate * 100).toFixed(1)}%`);
+      }
+      
       return { 
         ...state, 
         stats: {
-          totalSpins: state.stats.totalSpins + 1,
+          totalSpins: newTotalSpins,
           totalWins: action.payload.win > 0 ? state.stats.totalWins + 1 : state.stats.totalWins,
+          totalLosses: action.payload.win === 0 ? state.stats.totalLosses + 1 : state.stats.totalLosses,
           biggestWin: Math.max(state.stats.biggestWin, action.payload.win),
-        }
+          totalWon: state.stats.totalWon + (action.payload.win > 0 ? action.payload.win : 0),
+          totalLost: state.stats.totalLost + (action.payload.win === 0 ? state.totalBet : 0),
+          hasCheated: state.stats.hasCheated || state.cheats.enabled,
+        },
+        currentWinRate: newWinRate,
       };
     case 'RESET_STATS':
       return {
@@ -120,7 +161,11 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         stats: {
           totalSpins: 0,
           totalWins: 0,
+          totalLosses: 0,
           biggestWin: 0,
+          totalWon: 0,
+          totalLost: 0,
+          hasCheated: false,
         }
       };
     case 'SET_CHEAT':
@@ -132,9 +177,81 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         },
       };
     case 'LOAD_STATE':
-      return {
+      console.log('Loading state in reducer:', action.payload);
+      
+      // Ensure we have valid stats data
+      const stats = action.payload.stats || {};
+      const hasCheated = stats.hasCheated || action.payload.cheats?.enabled || false;
+      
+      const loadedState = {
         ...state,
         ...action.payload,
+        stats: {
+          totalSpins: Number(stats.totalSpins) || 0,
+          totalWins: Number(stats.totalWins) || 0,
+          totalLosses: Number(stats.totalLosses) || 0,
+          biggestWin: Number(stats.biggestWin) || 0,
+          totalWon: Number(stats.totalWon) || 0,
+          totalLost: Number(stats.totalLost) || 0,
+          hasCheated,
+        },
+        cheats: {
+          ...action.payload.cheats,
+          enabled: action.payload.cheats?.enabled || false,
+        },
+        currentWinRate: action.payload.currentWinRate || 0.3,
+        spinning: false,
+      };
+      
+      console.log('Final loaded state:', loadedState);
+      return loadedState;
+    case 'TOGGLE_CHEATS':
+      return {
+        ...state,
+        cheats: {
+          ...state.cheats,
+          enabled: !state.cheats.enabled,
+        },
+        stats: {
+          ...state.stats,
+          hasCheated: true,
+        },
+      };
+    case 'SET_CHEAT_WIN_RATE':
+      return {
+        ...state,
+        cheats: {
+          ...state.cheats,
+          winRate: action.payload,
+        },
+        stats: {
+          ...state.stats,
+          hasCheated: true,
+        },
+      };
+    case 'SET_CHEAT_FORCE_SYMBOLS':
+      return {
+        ...state,
+        cheats: {
+          ...state.cheats,
+          forceSymbols: action.payload,
+        },
+        stats: {
+          ...state.stats,
+          hasCheated: true,
+        },
+      };
+    case 'SET_CHEAT_ALWAYS_JACKPOT':
+      return {
+        ...state,
+        cheats: {
+          ...state.cheats,
+          alwaysJackpot: action.payload,
+        },
+        stats: {
+          ...state.stats,
+          hasCheated: true,
+        },
       };
     default:
       return state;
